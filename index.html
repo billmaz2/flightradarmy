@@ -94,7 +94,7 @@
       display: flex; flex-direction: column; min-height: 0; overflow: hidden;
     }
     #mapwrap { position: relative; min-height: 0; }
-    #map { position: absolute; inset: 0; background: #0b0d10; }
+    #map { position: absolute; inset: 0; background: #1a1d23; }
 
     /* ---------- status ---------- */
     .status { padding: 12px 14px; border-bottom: 1px solid var(--color-border); }
@@ -371,6 +371,10 @@
     <p>Type a place name into the search box. In simulation mode, the built-in geocoder knows the
        coordinates of common places like <b>Mandra Attikis</b> (Mandra, Attica). You can also enter
        coordinates directly as <span class="kbd">lat,lon</span>.</p>
+
+    <h3>Map tiles</h3>
+    <p>The map uses CARTO's dark basemap. If it appears blank, check your internet connection or
+       try reloading — the flight list and simulation continue to work without the map.</p>
 
     <h3>Good to know</h3>
     <ul>
@@ -686,20 +690,27 @@ function placeMapLayers(){
     `<div class="place-chip">${esc(S.place.name)} · ${S.R} km</div>`, iconSize:[0,0]})}).addTo(map);
 }
 function fitMap(){ if(mapHasLib&&map) map.setView([S.place.lat,S.place.lon], zoomFor(S.R)); }
+
 function initMap(){
   if(!mapHasLib){
     $('map').innerHTML='<div style="padding:30px;color:#a09d94">Map library failed to load — the flight list still works.</div>';
     return;
   }
-  map=L.map('map',{zoomSnap:.25, zoomDelta:.5, attributionControl:true, worldCopyJump:true});
+  map=L.map('map',{zoomSnap:.25, zoomDelta:.5, attributionControl:true, worldCopyJump:true, zoomControl:true});
   map.attributionControl.setPrefix(false);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains:'abcd', maxZoom:19}).addTo(map);
+
+  // Use OpenStreetMap standard tiles (reliable, no subdomain issues)
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  // Canvas overlay for aircraft glyphs
   canvasL=document.createElement('canvas'); canvasL.style.position='absolute'; canvasL.style.zIndex=640;
   canvasL.style.pointerEvents='none';
   map.getPane('overlayPane').appendChild(canvasL);
   ctxL=canvasL.getContext('2d');
+
   const reposition=()=>{ if(!map||!canvasL) return;
     const tl=map.containerPointToLayerPoint([0,0]); L.DomUtil.setPosition(canvasL,tl);
     const sz=map.getSize(), dpr=window.devicePixelRatio||1;
@@ -722,8 +733,9 @@ function initMap(){
     select(best?best.i:null);
   });
   placeMapLayers();
-  setTimeout(reposition,50);
+  setTimeout(reposition,100);
 }
+
 const PLANE_PATH=[[0,-9],[1.8,-3],[8.5,.5],[8.5,2.4],[1.8,1.4],[1.6,5.6],[4.2,7.6],[4.2,9],[0,7.9],[-4.2,9],[-4.2,7.6],[-1.6,5.6],[-1.8,1.4],[-8.5,2.4],[-8.5,.5],[-1.8,-3]];
 function drawOverlay(){
   if(!ctxL||!map) return;
